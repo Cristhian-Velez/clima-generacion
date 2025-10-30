@@ -187,228 +187,66 @@ print(f"\n✅ Archivo guardado correctamente: {ruta_salida}")
 
 
 ################################################################################################################
-################################################################################################################
+#GRAFICAS DE ENERGIA 
 
-# generar_informe.py
-# ------------------------------------------------------------
-# Crea un informe Word con análisis técnico de la planta
-# SUPERMERCADO CABEZA Y COLA a partir del Excel unificado
-# (df_union) y las imágenes de las gráficas si están guardadas.
-# ------------------------------------------------------------
+#GENERACION TOTAL
 
-import os
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from docx import Document
-from docx.shared import Inches, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+plt.figure(figsize=(10,5))
+plt.plot(df_union["Fecha"], df_union["Generacion_kWh"], color="tab:green")
+plt.title("⚡ Generación diaria - Cabeza y Cola")
+plt.xlabel("Fecha")
+plt.ylabel("Energía generada (kWh)")
+plt.grid(True, linestyle="--", alpha=0.6)
+plt.tight_layout()
+plt.show()
 
-# ========= CONFIGURA RUTAS =========
-# Excel que guardaste con el merge clima + generación:
-RUTA_EXCEL = "resultados/Cabeza_y_Cola_Clima_Generacion.xlsx"
+#CONSUMO TOTAL
 
-# Imágenes de gráficas (si no existen, el informe se genera igual)
-IMG_RAD = "Radiación diaria - Cabeza y Cola.png"
-IMG_NUBE = "Nubosidad diaria - Cabeza y Cola.png"
-IMG_TEMP = "Temperaturas diarias - Cabeza y Cola.png"
-IMG_LLUVIA = "Precipitación diaria - Cabeza y Cola.png"
+plt.figure(figsize=(10,5))
+plt.plot(df_union["Fecha"], df_union["Consumo_kWh"], color="tab:red", label="Consumo")
+plt.plot(df_union["Fecha"], df_union["Generacion_kWh"], color="tab:blue", label="Generación")
+plt.title("📊 Generación vs Consumo diario")
+plt.xlabel("Fecha")
+plt.ylabel("Energía (kWh)")
+plt.legend()
+plt.grid(True, linestyle="--", alpha=0.6)
+plt.tight_layout()
+plt.show()
 
-# Carpeta de salida para el informe
-CARPETA_SALIDA = "informes"
-NOMBRE_DOCX = f"Informe_Tecnico_Cabeza_y_Cola_{datetime.now().strftime('%Y%m%d')}.docx"
+#AUTOCONSUMO, INYECCIÓN Y IMPORTACIÓN
 
-
-# ========= UTILIDADES =========
-def safe_add_picture(doc: Document, path: str, width_in=6.0, caption: str | None = None):
-    """Inserta imagen si existe; si no, agrega una nota."""
-    if os.path.exists(path):
-        doc.add_picture(path, width=Inches(width_in))
-        if caption:
-            p = doc.add_paragraph(caption)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    else:
-        doc.add_paragraph(f"[Nota] No se encontró la imagen: {path}")
-
-
-def add_kpi_paragraph(doc: Document, k: str, v: str):
-    p = doc.add_paragraph()
-    run_b = p.add_run(f"{k}: ")
-    run_b.bold = True
-    p.add_run(v)
-
-
-# ========= CARGA DE DATOS =========
-if not os.path.exists(RUTA_EXCEL):
-    raise FileNotFoundError(
-        f"No encuentro {RUTA_EXCEL}. Asegúrate de haber ejecutado el script "
-        f"que genera el merge y guarda el Excel en 'resultados/'."
-    )
-
-df = pd.read_excel(RUTA_EXCEL)
-# Normalización por si acaso
-df["Fecha"] = pd.to_datetime(df["Fecha"])
-df = df.sort_values("Fecha").reset_index(drop=True)
-
-# Columnas esperadas
-cols_necesarias = [
-    "Fecha",
-    "Generacion_kWh",
-    "Radiacion_kWhm2",
-    "Nubosidad_%",
-    "Temp_Max",
-    "Temp_Min",
-]
-for c in cols_necesarias:
-    if c not in df.columns:
-        raise ValueError(f"Falta la columna requerida '{c}' en {RUTA_EXCEL}")
-
-# Precipitaciones (opcional)
-tiene_lluvia = "Precipitacion_mm" in df.columns
-
-# Reemplazar valores inválidos de NASA por NaN para KPIs
-df_kpi = df.replace([-999, -9999, -999.0, -9999.0], np.nan)
-
-# ========= KPIs RÁPIDOS =========
-periodo_ini = df_kpi["Fecha"].min().date()
-periodo_fin = df_kpi["Fecha"].max().date()
-
-gen_total = df_kpi["Generacion_kWh"].sum()
-gen_media = df_kpi["Generacion_kWh"].mean()
-rad_media = df_kpi["Radiacion_kWhm2"].mean()
-nube_media = df_kpi["Nubosidad_%"].mean()
-tmax_media = df_kpi["Temp_Max"].mean()
-tmin_media = df_kpi["Temp_Min"].mean()
-
-# Indicador de rendimiento simple (kWh/kWh/m2) — ojo: sin DC nominal
-# útil como proxy de eficiencia relativa día a día
-df_kpi["PR_simplificado"] = df_kpi["Generacion_kWh"] / df_kpi["Radiacion_kWhm2"]
-pr_medio = df_kpi["PR_simplificado"].replace([np.inf, -np.inf], np.nan).mean()
-
-# ========= COMPARACIÓN REAL vs ESTIMADO (PV*SOL) =========
-# Estimados mensuales (kWh/mes) tomados de tu tabla PV*SOL
-pvsol = {
-    1: 18414, 2: 16898, 3: 18250, 4: 17883, 5: 19231, 6: 18993,
-    7: 19530, 8: 19060, 9: 16886, 10: 16884, 11: 16753, 12: 17217
-}
-# Sumar real por mes del rango disponible
-df_kpi["Año"] = df_kpi["Fecha"].dt.year
-df_kpi["Mes"] = df_kpi["Fecha"].dt.month
-real_mensual = (
-    df_kpi.groupby(["Año", "Mes"], as_index=False)["Generacion_kWh"].sum()
-    .rename(columns={"Generacion_kWh": "Real_kWh"})
+plt.figure(figsize=(10,6))
+plt.stackplot(
+    df_union["Fecha"],
+    df_union["Autoconsumo_kWh"],
+    df_union["Inyeccion_kWh"],
+    df_union["Importacion_kWh"],
+    labels=["Autoconsumo", "Inyección", "Importación"],
+    alpha=0.8
 )
+plt.title("⚙️ Distribución energética diaria - Cabeza y Cola")
+plt.xlabel("Fecha")
+plt.ylabel("Energía (kWh)")
+plt.legend(loc="upper left")
+plt.tight_layout()
+plt.show()
 
-# Añadir estimado
-real_mensual["Estimado_kWh"] = real_mensual["Mes"].map(pvsol)
-real_mensual["Cumplimiento_%"] = 100.0 * real_mensual["Real_kWh"] / real_mensual["Estimado_kWh"]
+#RADIACIÓN + GENERACIÓN
 
-# ========= DOCUMENTO WORD =========
-os.makedirs(CARPETA_SALIDA, exist_ok=True)
-doc = Document()
+plt.figure(figsize=(6,5))
+plt.scatter(df_union["Radiacion_kWhm2"], df_union["Generacion_kWh"], alpha=0.7, color="tab:orange", edgecolors="k")
+plt.title("☀️ Radiación vs Generación (datos reales corregidos)")
+plt.xlabel("Radiación (kWh/m²)")
+plt.ylabel("Generación (kWh)")
+plt.grid(True, linestyle="--", alpha=0.6)
+plt.tight_layout()
+plt.show()
 
-# Portada
-titulo = doc.add_heading("INFORME TÉCNICO DE ANÁLISIS", level=0)
-titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-doc.add_paragraph("Planta Solar SUPERMERCADO CABEZA Y COLA").alignment = WD_ALIGN_PARAGRAPH.CENTER
-doc.add_paragraph(f"Periodo de análisis: {periodo_ini} – {periodo_fin}").alignment = WD_ALIGN_PARAGRAPH.CENTER
-doc.add_paragraph("Autor: Cristian Camilo Vélez | Área de Operación y Mantenimiento – Terrall Solnet").alignment = WD_ALIGN_PARAGRAPH.CENTER
-doc.add_page_break()
+#EVOLUCIÓN GENERAL
 
-# 1. Resumen ejecutivo
-doc.add_heading("1. Resumen ejecutivo", level=1)
-add_kpi_paragraph(doc, "Generación total (kWh)", f"{gen_total:,.0f}")
-add_kpi_paragraph(doc, "Generación promedio diaria (kWh/día)", f"{gen_media:,.1f}")
-add_kpi_paragraph(doc, "Radiación media (kWh/m²/día)", f"{rad_media:,.2f}")
-add_kpi_paragraph(doc, "Nubosidad media (%)", f"{nube_media:,.1f}")
-add_kpi_paragraph(doc, "Temperatura media (°C) [máx / mín]", f"{tmax_media:,.1f} / {tmin_media:,.1f}")
-add_kpi_paragraph(doc, "PR simplificado medio (kWh/kWh·m²)", f"{pr_medio:,.2f}")
-doc.add_paragraph(
-    "Durante el periodo evaluado, la planta mostró una correlación positiva entre radiación y generación, "
-    "pero con un desempeño inferior al esperado por el estimado PV*SOL. Las causas técnicas más probables "
-    "incluyen alta nubosidad estacional, pérdidas térmicas por temperatura de operación y pérdidas por ensuciamiento. "
-    "Se recomienda reforzar el mantenimiento preventivo y la revisión de strings e inversores."
-)
-
-# 2. Radiación vs Generación
-doc.add_heading("2. Radiación solar vs generación eléctrica", level=1)
-doc.add_paragraph(
-    "La curva de generación sigue la tendencia de la radiación disponible. No obstante, la magnitud es menor que la "
-    "esperada por el modelo, lo que sugiere pérdidas adicionales (temperatura, suciedad, limitaciones de inversor o "
-    "sombreamientos parciales)."
-)
-safe_add_picture(doc, IMG_RAD, caption="Figura 1. Radiación vs Generación")
-
-# 3. Nubosidad
-doc.add_heading("3. Nubosidad diaria", level=1)
-doc.add_paragraph(
-    "La nubosidad se mantuvo elevada (≈80–90% en promedio), con días cercanos al 100%. "
-    "Esto explica una parte importante de la caída en irradiancia y, por ende, en generación."
-)
-safe_add_picture(doc, IMG_NUBE, caption="Figura 2. Nubosidad diaria")
-
-# 4. Precipitación
-doc.add_heading("4. Precipitación diaria", level=1)
-if tiene_lluvia:
-    doc.add_paragraph(
-        "Se observaron múltiples eventos de lluvia (≥10 mm/día) en junio–septiembre. "
-        "La precipitación reduce la irradiancia efectiva pero puede favorecer la limpieza de los módulos; "
-        "normalmente se observa una leve recuperación de eficiencia 1–2 días después de lluvias intensas."
-    )
-else:
-    doc.add_paragraph(
-        "Para este informe no se encontró la columna de precipitación en el Excel unificado. "
-        "Si deseas incluirla, asegúrate de solicitar PRECTOTCORR en la API y volver a guardar el merge."
-    )
-safe_add_picture(doc, IMG_LLUVIA, caption="Figura 3. Precipitación diaria")
-
-# 5. Temperaturas
-doc.add_heading("5. Temperaturas diarias", level=1)
-doc.add_paragraph(
-    "Las temperaturas máximas se ubicaron entre 30–38 °C. Asumiendo coeficiente de temperatura del módulo "
-    "≈ -0.4 %/°C, se estiman pérdidas térmicas del 4–6 % respecto a STC. La gestión térmica y el flujo de aire en "
-    "estructura influyen en el rendimiento estacional."
-)
-safe_add_picture(doc, IMG_TEMP, caption="Figura 4. Temperaturas diarias")
-
-# 6. Real vs Estimado (tabla)
-doc.add_heading("6. Comparación real vs. estimado (PV*SOL)", level=1)
-doc.add_paragraph(
-    "Se comparó la energía mensual real con el estimado PV*SOL. Los meses analizados muestran un cumplimiento "
-    "promedio entre 80–90 %, afectado por nubosidad alta y temperatura. La tabla resume el desempeño:"
-)
-
-tabla = doc.add_table(rows=1, cols=5)
-tabla.style = "Light Grid Accent 1"
-hdr_cells = tabla.rows[0].cells
-hdr_cells[0].text = "Año"
-hdr_cells[1].text = "Mes"
-hdr_cells[2].text = "Real (kWh)"
-hdr_cells[3].text = "Estimado PV*SOL (kWh)"
-hdr_cells[4].text = "Cumplimiento (%)"
-
-for _, row in real_mensual.iterrows():
-    r = tabla.add_row().cells
-    r[0].text = str(int(row["Año"]))
-    r[1].text = str(int(row["Mes"])).zfill(2)
-    r[2].text = f"{row['Real_kWh']:,.0f}"
-    r[3].text = f"{row['Estimado_kWh']:,.0f}" if not pd.isna(row["Estimado_kWh"]) else "-"
-    r[4].text = f"{row['Cumplimiento_%']:,.1f}" if not pd.isna(row["Cumplimiento_%"]) else "-"
-
-# 7. Conclusiones y recomendaciones
-doc.add_heading("7. Conclusiones y recomendaciones", level=1)
-doc.add_paragraph(
-    "• La planta presenta un comportamiento coherente con la radiación incidente, pero con déficit respecto a PV*SOL.\n"
-    "• Las causas principales del gap: nubosidad elevada, pérdidas térmicas y potencial ensuciamiento.\n"
-    "• Recomendaciones:\n"
-    "  1) Programa de lavado post-lluvia y previo a temporada seca.\n"
-    "  2) Revisión de strings e inspección IV Curve para descartar desbalances o hotspots.\n"
-    "  3) Verificar límites/curtailment del inversor y calidad de conexión a red.\n"
-    "  4) Implementar tablero de monitoreo (NASA + Growatt) para alertas de rendimiento."
-)
-
-# Guardar
-os.makedirs(CARPETA_SALIDA, exist_ok=True)
-ruta_docx = os.path.join(CARPETA_SALIDA, NOMBRE_DOCX)
-doc.save(ruta_docx)
-print(f"✅ Informe generado: {ruta_docx}")
+df_mensual = df_union.resample("M", on="Fecha").sum(numeric_only=True)
+df_mensual[["Generacion_kWh", "Consumo_kWh"]].plot(kind="bar", figsize=(10,5))
+plt.title("📆 Generación vs Consumo mensual")
+plt.ylabel("kWh")
+plt.tight_layout()
+plt.show()
