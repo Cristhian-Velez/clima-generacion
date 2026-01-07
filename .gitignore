@@ -13,3 +13,6 @@ __pycache__/
 .venv/
 venv/
 .env/
+
+# ignorar carpeta de datos completa
+datos/
