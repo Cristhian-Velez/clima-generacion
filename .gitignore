@@ -1,0 +1,15 @@
+# datasets y archivos pesados
+*.csv
+*.xlsx
+
+# notebooks temporales
+.ipynb_checkpoints/
+
+# python cache
+__pycache__/
+*.pyc
+
+# entornos virtuales
+.venv/
+venv/
+.env/
