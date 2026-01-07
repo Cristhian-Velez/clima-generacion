@@ -1,0 +1,29 @@
+###
+GET http://127.0.0.1:5000/lista
+Accept-Accept: application/json
+###
+
+###
+GET http://127.0.0.1:5000/saludo
+Accept-Accept: application/json
+###
+
+POST http://127.0.0.1:5000/ingresar
+Content-Type: application/json
+
+###
+DELETE http://127.0.0.1:5000/eliminar/0
+Accept: application/json
+
+###
+PUT http://127.0.0.1:5000/actualizar/0
+Content-Type: application/json
+
+### PUT actualizar
+PUT http://127.0.0.1:5000/actualizar/0
+Content-Type: application/json
+
+
+
+
+
